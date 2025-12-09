@@ -42,6 +42,7 @@ export function serveStatic(app: Express) {
 
   // Servir archivos estáticos (CSS, JS, imágenes, etc.) con maxAge para cache
   // IMPORTANTE: Servir desde la raíz para que /assets/... funcione correctamente
+  // IMPORTANTE: No servir index.html automáticamente - lo manejamos manualmente más abajo
   app.use(express.static(distPath, {
     maxAge: "1y",
     etag: true,
@@ -107,15 +108,39 @@ export function serveStatic(app: Express) {
       // Leer el archivo y enviarlo con el Content-Type correcto
       const htmlContent = await fs.promises.readFile(indexPath, "utf-8");
       
-      // Establecer headers ANTES de enviar la respuesta
-      // Esto es crítico para Vercel - los headers deben establecerse antes de escribir el body
-      res.status(200);
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.setHeader("X-Content-Type-Options", "nosniff");
+      // Log para debugging en Vercel
+      console.log(`[Static] Serving index.html for: ${req.path}`);
+      console.log(`[Static] Headers already sent: ${res.headersSent}`);
+      console.log(`[Static] Current Content-Type:`, res.getHeader("Content-Type"));
       
-      // Usar res.end() en lugar de res.send() para mayor control
+      // CRÍTICO: Establecer headers usando writeHead ANTES de escribir cualquier contenido
+      // Esto es absolutamente necesario para Vercel - los headers deben establecerse primero
+      if (!res.headersSent) {
+        // Usar writeHead con todos los headers necesarios
+        res.writeHead(200, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "X-Content-Type-Options": "nosniff",
+        });
+        console.log(`[Static] Headers set via writeHead - Content-Type: text/html`);
+      } else {
+        console.error(`[Static] WARNING: Headers already sent! Content-Type:`, res.getHeader("Content-Type"));
+      }
+      
+      // Verificar que el Content-Type está establecido correctamente
+      const finalContentType = res.getHeader("Content-Type");
+      if (!finalContentType || !finalContentType.toString().includes("text/html")) {
+        console.error(`[Static] ERROR: Content-Type not set correctly! Current:`, finalContentType);
+        // Intentar establecerlo de nuevo
+        if (!res.headersSent) {
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+        }
+      }
+      
+      // Usar res.end() para enviar el contenido
+      // NO usar res.send() ya que puede causar problemas con los headers en Vercel
       res.end(htmlContent);
+      console.log(`[Static] HTML content sent successfully, length: ${htmlContent.length}`);
     } catch (err) {
       console.error(`[Static] Error reading index.html:`, err);
       if (!res.headersSent) {
