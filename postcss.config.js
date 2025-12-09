@@ -5,6 +5,7 @@ export default (ctx) => {
       autoprefixer: {},
     },
     // Asegurar que la opción 'from' se pase correctamente
-    ...(ctx?.from && { from: ctx.from }),
+    // Vite debería pasar esto automáticamente, pero lo incluimos por si acaso
+    from: ctx?.from || ctx?.file?.path || undefined,
   };
 }

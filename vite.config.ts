@@ -2,8 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import tailwindcss from "tailwindcss";
-import autoprefixer from "autoprefixer";
 
 // Usar process.cwd() como base, que funciona tanto en ESM como CommonJS
 // vite.config.ts siempre se ejecuta desde la raíz del proyecto
@@ -45,12 +43,6 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-  css: {
-    postcss: {
-      plugins: [
-        tailwindcss(),
-        autoprefixer(),
-      ],
-    },
-  },
+  // PostCSS se configura automáticamente desde postcss.config.js
+  // Vite pasará automáticamente la opción 'from' cuando procese CSS
 });
