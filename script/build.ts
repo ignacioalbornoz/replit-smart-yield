@@ -62,13 +62,14 @@ async function buildAll() {
     logLevel: "info",
   });
 
-  // Copiar archivos estáticos a api/public para que la función serverless pueda acceder
-  // Esto es necesario en Vercel porque las funciones serverless tienen su propio sistema de archivos
+  // Nota: En Vercel, los archivos estáticos se sirven directamente desde dist/public
+  // usando outputDirectory en vercel.json. No necesitamos copiarlos a api/public.
+  // Solo copiamos si queremos un fallback para la función serverless (opcional)
   const staticSource = path.resolve("dist/public");
   const staticDest = path.resolve("api/public");
   
   if (existsSync(staticSource)) {
-    console.log("copying static files to api/public for Vercel...");
+    console.log("copying static files to api/public as fallback...");
     await rm(staticDest, { recursive: true, force: true });
     await cp(staticSource, staticDest, { recursive: true });
     console.log("static files copied successfully");

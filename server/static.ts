@@ -3,23 +3,23 @@ import fs from "fs";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  // En Vercel, los archivos estáticos se copian a api/public durante el build
+  // En Vercel, los archivos estáticos se sirven directamente por Vercel (no por Express)
+  // Solo necesitamos servir index.html para las rutas SPA
   // En desarrollo local, están en dist/public después del build
   let distPath: string;
   
   if (process.env.VERCEL) {
-    // En Vercel, los archivos están en api/public (relativo a la función serverless)
-    distPath = path.resolve(__dirname, "..", "api", "public");
+    // En Vercel, los archivos estáticos se sirven directamente por Vercel
+    // Solo necesitamos el index.html para las rutas SPA
+    // Intentar encontrar el index.html en diferentes ubicaciones posibles
+    const possiblePaths = [
+      path.resolve(__dirname, "..", "api", "public"),
+      path.resolve(process.cwd(), "api", "public"),
+      path.resolve(process.cwd(), "dist", "public"),
+      path.resolve(__dirname, "..", "dist", "public"),
+    ];
     
-    // Fallback: intentar desde process.cwd() si __dirname no funciona
-    if (!fs.existsSync(distPath)) {
-      distPath = path.resolve(process.cwd(), "api", "public");
-    }
-    
-    // Otro fallback: dist/public
-    if (!fs.existsSync(distPath)) {
-      distPath = path.resolve(process.cwd(), "dist", "public");
-    }
+    distPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
   } else {
     // En desarrollo local
     distPath = path.resolve(__dirname, "..", "dist", "public");
@@ -43,18 +43,29 @@ export function serveStatic(app: Express) {
     );
   }
 
-  // Servir archivos estáticos (CSS, JS, imágenes, etc.) con maxAge para cache
-  // IMPORTANTE: Servir desde la raíz para que /assets/... funcione correctamente
-  app.use(express.static(distPath, {
-    maxAge: "1y",
-    etag: true,
-    lastModified: true,
-    index: false, // No servir index.html automáticamente para archivos estáticos
-  }));
+  if (process.env.VERCEL) {
+    // En Vercel, los archivos estáticos se sirven directamente por Vercel
+    // Solo necesitamos servir index.html para las rutas SPA que no sean archivos estáticos
+    app.use("*", (_req, res) => {
+      const indexPath = path.resolve(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send("Not Found");
+      }
+    });
+  } else {
+    // En desarrollo local, servir todos los archivos estáticos
+    app.use(express.static(distPath, {
+      maxAge: "1y",
+      etag: true,
+      lastModified: true,
+      index: false, // No servir index.html automáticamente para archivos estáticos
+    }));
 
-  // fall through to index.html if the file doesn't exist (SPA routing)
-  // Esto debe ir DESPUÉS de express.static para que los archivos estáticos se sirvan primero
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
+    // fall through to index.html if the file doesn't exist (SPA routing)
+    app.use("*", (_req, res) => {
+      res.sendFile(path.resolve(distPath, "index.html"));
+    });
+  }
 }
