@@ -106,13 +106,20 @@ export function serveStatic(app: Express) {
     try {
       // Leer el archivo y enviarlo con el Content-Type correcto
       const htmlContent = await fs.promises.readFile(indexPath, "utf-8");
+      
+      // Establecer headers ANTES de enviar la respuesta
+      // Esto es crítico para Vercel - los headers deben establecerse antes de escribir el body
+      res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.send(htmlContent);
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      
+      // Usar res.end() en lugar de res.send() para mayor control
+      res.end(htmlContent);
     } catch (err) {
       console.error(`[Static] Error reading index.html:`, err);
       if (!res.headersSent) {
-        res.status(500).send("Internal Server Error");
+        res.status(500).setHeader("Content-Type", "text/plain").end("Internal Server Error");
       }
     }
   });
