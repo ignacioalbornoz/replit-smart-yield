@@ -35,7 +35,13 @@ export async function createApp(): Promise<Express> {
 
   app.use(express.urlencoded({ extended: false }));
 
+  // Middleware de logging solo para rutas API
   app.use((req, res, next) => {
+    // Solo hacer logging para rutas API, dejar que Vite maneje el resto
+    if (!req.path.startsWith("/api")) {
+      return next();
+    }
+    
     const start = Date.now();
     const path = req.path;
     let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -48,14 +54,11 @@ export async function createApp(): Promise<Express> {
 
     res.on("finish", () => {
       const duration = Date.now() - start;
-      if (path.startsWith("/api")) {
-        let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse) {
-          logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-        }
-
-        log(logLine);
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+      log(logLine);
     });
 
     next();
