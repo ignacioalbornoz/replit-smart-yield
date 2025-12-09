@@ -51,7 +51,69 @@ export function serveStatic(app: Express) {
 
   // fall through to index.html if the file doesn't exist (SPA routing)
   // Esto debe ir DESPUÉS de express.static para que los archivos estáticos se sirvan primero
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  app.get("*", async (req, res, next) => {
+    // Si es una ruta API, dejar que el siguiente middleware la maneje
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+    
+    // Verificar si el archivo solicitado existe en el directorio estático
+    // Si existe, express.static ya lo debería haber servido, pero verificamos por si acaso
+    const requestedFile = path.resolve(distPath, req.path.slice(1)); // Remover el / inicial
+    const isFileRequest = req.path.includes(".") && !req.path.endsWith("/");
+    
+    if (isFileRequest && fs.existsSync(requestedFile)) {
+      // El archivo existe pero express.static no lo sirvió, intentar servirlo manualmente
+      const ext = path.extname(requestedFile).toLowerCase();
+      const contentTypeMap: Record<string, string> = {
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+        ".ico": "image/x-icon",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+        ".ttf": "font/ttf",
+        ".eot": "application/vnd.ms-fontobject",
+        ".json": "application/json",
+      };
+      
+      const contentType = contentTypeMap[ext] || "application/octet-stream";
+      
+      try {
+        const fileContent = await fs.promises.readFile(requestedFile);
+        res.setHeader("Content-Type", contentType);
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.send(fileContent);
+        return;
+      } catch (err) {
+        console.error(`[Static] Error serving file ${req.path}:`, err);
+        return next();
+      }
+    }
+    
+    // Si no es un archivo o el archivo no existe, servir index.html (SPA routing)
+    const indexPath = path.resolve(distPath, "index.html");
+    
+    if (!fs.existsSync(indexPath)) {
+      console.error(`[Static] index.html not found at: ${indexPath}`);
+      return res.status(404).send("Not Found");
+    }
+    
+    try {
+      // Leer el archivo y enviarlo con el Content-Type correcto
+      const htmlContent = await fs.promises.readFile(indexPath, "utf-8");
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.send(htmlContent);
+    } catch (err) {
+      console.error(`[Static] Error reading index.html:`, err);
+      if (!res.headersSent) {
+        res.status(500).send("Internal Server Error");
+      }
+    }
   });
 }
