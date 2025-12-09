@@ -60,6 +60,19 @@ async function buildAll() {
     minify: true,
     external: externals,
     logLevel: "info",
+    target: "node18",
+    // Inyectar polyfill para import.meta.url antes del código
+    banner: {
+      js: `
+        // Polyfill para import.meta en CommonJS
+        if (typeof globalThis !== 'undefined' && !globalThis.import) {
+          const { pathToFileURL } = require('url');
+          const { realpathSync } = require('fs');
+          const filename = realpathSync(__filename);
+          globalThis.import = { meta: { url: pathToFileURL(filename).href } };
+        }
+      `,
+    },
   });
 
   // Copiar archivos estáticos a api/public para que la función serverless pueda acceder

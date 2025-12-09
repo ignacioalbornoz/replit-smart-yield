@@ -7,9 +7,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { nanoid } from "nanoid";
 
-// Usar fileURLToPath para compatibilidad con esbuild (CommonJS)
-// esbuild puede convertir import.meta.url a __dirname automáticamente
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Obtener __dirname de forma compatible con ESM y CommonJS
+// Este archivo solo se usa en desarrollo, pero esbuild lo incluye en el bundle
+// Usar process.cwd() como base, que funciona en ambos contextos
+// Nota: En desarrollo real, esto funciona porque estamos en la raíz del proyecto
+const __dirname = process.cwd();
 
 const viteLogger = createLogger();
 
@@ -42,7 +44,6 @@ export async function setupVite(server: Server, app: Express) {
     try {
       const clientTemplate = path.resolve(
         __dirname,
-        "..",
         "client",
         "index.html",
       );
