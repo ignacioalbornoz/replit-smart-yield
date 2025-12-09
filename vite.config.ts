@@ -37,4 +37,10 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  css: {
+    postcss: {
+      // Esto asegura que PostCSS reciba la opción 'from' correctamente
+      // y elimina el warning
+    },
+  },
 });
