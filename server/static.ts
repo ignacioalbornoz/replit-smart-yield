@@ -3,21 +3,35 @@ import fs from "fs";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  // En Vercel, los archivos estáticos están en dist/public relativo al proyecto
-  // En desarrollo local, también están en dist/public después del build
-  // Usar __dirname para encontrar la ruta correcta desde el código compilado
-  const distPath = process.env.VERCEL 
-    ? path.resolve(process.cwd(), "dist", "public")
-    : path.resolve(__dirname, "..", "dist", "public");
-    
-  // Log para debugging en Vercel (se puede eliminar después)
+  // En Vercel, los archivos estáticos se copian a api/public durante el build
+  // En desarrollo local, están en dist/public después del build
+  let distPath: string;
+  
   if (process.env.VERCEL) {
-    console.log(`[Vercel] Serving static files from: ${distPath}`);
-    console.log(`[Vercel] Directory exists: ${fs.existsSync(distPath)}`);
-    if (fs.existsSync(distPath)) {
-      const files = fs.readdirSync(distPath);
-      console.log(`[Vercel] Files in dist/public:`, files.slice(0, 10));
+    // En Vercel, los archivos están en api/public (relativo a la función serverless)
+    distPath = path.resolve(__dirname, "..", "api", "public");
+    
+    // Fallback: intentar desde process.cwd() si __dirname no funciona
+    if (!fs.existsSync(distPath)) {
+      distPath = path.resolve(process.cwd(), "api", "public");
     }
+    
+    // Otro fallback: dist/public
+    if (!fs.existsSync(distPath)) {
+      distPath = path.resolve(process.cwd(), "dist", "public");
+    }
+  } else {
+    // En desarrollo local
+    distPath = path.resolve(__dirname, "..", "dist", "public");
+  }
+    
+  // Log para debugging
+  console.log(`[Static] Serving static files from: ${distPath}`);
+  console.log(`[Static] Directory exists: ${fs.existsSync(distPath)}`);
+  
+  if (fs.existsSync(distPath)) {
+    const files = fs.readdirSync(distPath);
+    console.log(`[Static] Files found:`, files.slice(0, 10));
   }
   
   if (!fs.existsSync(distPath)) {

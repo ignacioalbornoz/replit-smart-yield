@@ -1,6 +1,8 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, cp } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -59,6 +61,18 @@ async function buildAll() {
     external: externals,
     logLevel: "info",
   });
+
+  // Copiar archivos estáticos a api/public para que la función serverless pueda acceder
+  // Esto es necesario en Vercel porque las funciones serverless tienen su propio sistema de archivos
+  const staticSource = path.resolve("dist/public");
+  const staticDest = path.resolve("api/public");
+  
+  if (existsSync(staticSource)) {
+    console.log("copying static files to api/public for Vercel...");
+    await rm(staticDest, { recursive: true, force: true });
+    await cp(staticSource, staticDest, { recursive: true });
+    console.log("static files copied successfully");
+  }
 }
 
 buildAll().catch((err) => {

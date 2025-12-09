@@ -62,3 +62,4 @@ Si usas almacenamiento JSON (por defecto), no necesitas configurar `DATABASE_URL
 - En Vercel, cada función serverless tiene su propio sistema de archivos efímero
 - Si necesitas persistencia de datos, considera usar una base de datos externa o Vercel KV
 
+
