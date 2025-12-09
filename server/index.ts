@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -94,5 +95,16 @@ app.use((req, res, next) => {
     () => {
       log(`serving on port ${port}`);
     },
-  );
+  ).on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      log(`❌ Error: El puerto ${port} ya está en uso`, "error");
+      log(`💡 Soluciones:`, "error");
+      log(`   1. Matar el proceso: kill -9 $(lsof -ti:${port})`, "error");
+      log(`   2. Usar otro puerto: PORT=3000 npm run dev`, "error");
+      process.exit(1);
+    } else {
+      log(`❌ Error al iniciar el servidor: ${err.message}`, "error");
+      throw err;
+    }
+  });
 })();
