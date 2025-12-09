@@ -16,6 +16,7 @@ export default async function handler(
   const app = await appPromise;
 
   // Pasar la request a Express usando el patrón de Vercel
+  // Express manejará tanto las rutas API como los archivos estáticos
   return new Promise((resolve, reject) => {
     app(req as any, res as any, (err?: any) => {
       if (err) {
